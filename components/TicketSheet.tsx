@@ -15,37 +15,6 @@ interface TicketSheetProps {
 }
 
 export function TicketSheet({ tickets, gameTitle, issueDate, gameDate, groupName }: TicketSheetProps) {
-  // Helper to format a ticket as text for WhatsApp
-  function formatTicketForWhatsApp(ticket: Ticket, gameTitle?: string, groupName?: string, issueDate?: string, gameDate?: string) {
-    let text = `Tambola Ticket\n`;
-    if (gameTitle) text += `Game: ${gameTitle}\n`;
-    if (groupName) text += `Group: ${groupName}\n`;
-    if (issueDate) text += `Issued: ${issueDate}\n`;
-    if (gameDate) text += `Game Date: ${gameDate}\n`;
-    text += `Player: ${ticket.playerName}\nTicket ID: ${ticket.id}\n`;
-    text += '\n';
-    // Render grid as text
-    for (let row = 0; row < 3; row++) {
-      let rowStr = '';
-      for (let col = 0; col < 9; col++) {
-        const cell = ticket.grid[row][col];
-        rowStr += cell !== null ? cell.toString().padStart(2, ' ') : '  ';
-        if (col < 8) rowStr += ' | ';
-      }
-      text += rowStr + '\n';
-    }
-    text += '\n';
-    return text;
-  }
-
-    const handleWhatsAppShare = () => {
-      let message = '';
-      tickets.forEach(ticket => {
-        message += formatTicketForWhatsApp(ticket, computedTitle, computedGroupName, computedIssueDate, computedGameDate);
-      });
-      const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
-      window.open(url, '_blank');
-    };
   const sheetRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
 
@@ -142,12 +111,6 @@ export function TicketSheet({ tickets, gameTitle, issueDate, gameDate, groupName
             </button>
             <button 
               onClick={handleShare} 
-              className="min-h-11 flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow-sm font-medium"
-            >
-              <Share2 className="w-4 h-4" /> Share on WhatsApp
-            </button>
-            <button
-              onClick={handleWhatsAppShare}
               className="min-h-11 flex items-center gap-2 px-4 py-2 bg-[#25D366] text-white rounded-lg hover:bg-[#128C7E] shadow-sm font-medium"
             >
               <MessageCircle className="w-4 h-4" /> Share via WhatsApp
