@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { generateTickets, Ticket } from "@/lib/ticket-generator";
-import { generateFullSheetTickets } from "@/lib/sheet-generator";
+import { Ticket } from "@/lib/ticket-generator";
+import { generateFullSheetTickets, generateBunchTickets } from "@/lib/sheet-generator";
 import { TicketSheet } from "@/components/TicketSheet";
 import { useGameStore } from "@/store/useStore";
 import Papa from "papaparse";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import { Download, Upload, Plus, Trash2, Home, Settings } from "lucide-react";
+import { Download, Upload, Plus, Trash2, Home, Settings, X } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -20,7 +20,7 @@ type TicketUploadRow = {
 };
 
 export default function TicketsPage() {
-  const { tickets, addTickets, clearTickets, sessionConfig, startSession, endSession } = useGameStore();
+  const { tickets, addTickets, clearTickets, deleteTicket, deleteTicketsByPlayer, sessionConfig, startSession, endSession } = useGameStore();
   const [manualCount, setManualCount] = useState(1);
   const [playerName, setPlayerName] = useState("");
   const [isExporting, setIsExporting] = useState(false);
@@ -34,25 +34,37 @@ export default function TicketsPage() {
     groupName: "Tambola Nights"
   });
 
+  const computeUniqueBunchName = (base: string): string => {
+    const existing = new Set(tickets.map(t => t.playerName));
+    if (!existing.has(base)) return base;
+    let n = 2;
+    while (existing.has(`${base} ${n}`)) n++;
+    return `${base} ${n}`;
+  };
+
   const handleGenerateManual = () => {
     if (manualCount < 1 || manualCount > 100) return;
-    
+
+    const trimmed = playerName.trim();
+    const baseName = trimmed || "Player";
+    const bunchName = computeUniqueBunchName(baseName);
+
     const newTickets: Ticket[] = [];
     const fullSheets = Math.floor(manualCount / 6);
     const remainder = manualCount % 6;
     let nextId = tickets.length + 1;
 
-    for(let i=0; i<fullSheets; i++) {
-        const sheet = generateFullSheetTickets(playerName || "Player", nextId);
+    for (let i = 0; i < fullSheets; i++) {
+        const sheet = generateFullSheetTickets(bunchName, nextId);
         newTickets.push(...sheet);
         nextId += 6;
     }
     if (remainder > 0) {
-        const excess = generateTickets(remainder, playerName || "Player", nextId);
-        newTickets.push(...excess);
+        const bunch = generateBunchTickets(remainder, bunchName, nextId);
+        newTickets.push(...bunch);
         nextId += remainder;
     }
-    
+
     addTickets(newTickets);
     setPlayerName("");
     setManualCount(1);
@@ -74,15 +86,15 @@ export default function TicketsPage() {
           if (!isNaN(sheetsCount)) {
             const fullSheets = Math.floor(sheetsCount / 6);
             const remainder = sheetsCount % 6;
-            
-            for(let i=0; i<fullSheets; i++) {
+
+            for (let i = 0; i < fullSheets; i++) {
               const sheet = generateFullSheetTickets(name, nextId);
               generated.push(...sheet);
               nextId += 6;
             }
             if (remainder > 0) {
-              const excess = generateTickets(remainder, name, nextId);
-              generated.push(...excess);
+              const bunch = generateBunchTickets(remainder, name, nextId);
+              generated.push(...bunch);
               nextId += remainder;
             }
           }
@@ -282,13 +294,13 @@ export default function TicketsPage() {
             <div className="flex flex-col gap-4 w-full pb-20">
               <AnimatePresence>
                 {Object.entries(groupedTickets).map(([playerId, playerTickets]) => (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    key={`chunk-${playerId}`} 
+                    key={`chunk-${playerId}`}
                     className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm"
                   >
-                    <div 
+                    <div
                       className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
                       onClick={() => setExpandedPlayer(expandedPlayer === playerId ? null : playerId)}
                     >
@@ -302,13 +314,43 @@ export default function TicketsPage() {
                         <span className="text-slate-500 dark:text-slate-400 font-medium w-12 text-center text-sm">
                           {expandedPlayer === playerId ? "Hide" : "View"}
                         </span>
+                        <button
+                          aria-label={`Delete bunch ${playerId}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (confirm(`Delete all ${playerTickets.length} tickets for "${playerId}"?`)) {
+                              deleteTicketsByPlayer(playerId);
+                              if (expandedPlayer === playerId) setExpandedPlayer(null);
+                            }
+                          }}
+                          className="min-h-9 min-w-9 flex items-center justify-center text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-full p-2 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
-                    
+
                     {expandedPlayer === playerId && (
                       <div className="p-3 sm:p-5 md:p-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/20 flex flex-col items-center overflow-x-auto w-full">
-                        <TicketSheet 
-                          tickets={playerTickets} 
+                        {playerTickets.length > 1 && (
+                          <div className="w-full max-w-3xl mb-3 flex flex-wrap gap-2 justify-end">
+                            {playerTickets.map((t) => (
+                              <button
+                                key={`del-${t.id}`}
+                                onClick={() => {
+                                  if (confirm(`Delete ticket #${t.id}?`)) {
+                                    deleteTicket(t.id);
+                                  }
+                                }}
+                                className="min-h-9 flex items-center gap-1 px-3 py-1.5 text-xs font-medium border border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900 dark:hover:bg-red-900/20 rounded-full transition-colors"
+                              >
+                                <X className="w-3 h-3" /> Ticket #{t.id}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        <TicketSheet
+                          tickets={playerTickets}
                           gameTitle={sessionConfig.gameTitle}
                           gameDate={sessionConfig.gameDate}
                           issueDate={sessionConfig.issueDate}

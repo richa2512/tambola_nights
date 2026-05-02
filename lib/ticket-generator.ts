@@ -167,12 +167,13 @@ export function generateTicketId(): string {
 
 export function generateTickets(count: number, playerNamePrefix: string = "Player", startId: number = 1): Ticket[] {
   const tickets: Ticket[] = [];
+  const ts = Date.now();
   for (let i = 0; i < count; i++) {
     tickets.push({
       id: startId + i,
-      playerName: count === 1 ? playerNamePrefix : `${playerNamePrefix} ${i + 1}`,
+      playerName: playerNamePrefix,
       grid: generateTambolaTicket(),
-      timestamp: Date.now(),
+      timestamp: ts,
     });
   }
   return tickets;

@@ -105,6 +105,103 @@ function attemptGenerateLayoutForCounts(colCounts: number[]): number[][] | null 
   return null;
 }
 
+// Generate a valid count-by-9 size matrix for an arbitrary bunch size (1..6).
+// Each row sums to 15, each column sum <= COLUMN_CAPACITIES[c], each cell in [1..3].
+function getValidPartialSizeMatrix(count: number): number[][] | null {
+  for (let attempt = 0; attempt < 5000; attempt++) {
+    const matrix: number[][] = Array(count).fill(null).map(() => Array(9).fill(1));
+    // After pre-fill of 1 per col, each ticket has 9 numbers; needs 6 more to reach 15.
+    // Total cells filled across bunch starts at 9*count; needs to reach 15*count.
+    // Per-column remaining capacity:
+    const colRemaining = COLUMN_CAPACITIES.map(c => Math.min(c, 3 * count) - count);
+
+    let valid = true;
+    for (let t = 0; t < count; t++) {
+      let ticketExtra = 6;
+      let tries = 0;
+      while (ticketExtra > 0 && tries < 200) {
+        const colIdx = Math.floor(Math.random() * 9);
+        if (matrix[t][colIdx] < 3 && colRemaining[colIdx] > 0) {
+          matrix[t][colIdx]++;
+          colRemaining[colIdx]--;
+          ticketExtra--;
+        }
+        tries++;
+      }
+      if (ticketExtra > 0) {
+        valid = false;
+        break;
+      }
+    }
+
+    if (valid) return matrix;
+  }
+  return null;
+}
+
+// Generate a "bunch" of N tickets (1..6) where no number from 1..90 repeats across the bunch.
+export function generateBunchTickets(count: number, playerName: string = "Player", startId: number = 1): Ticket[] {
+  if (count <= 0) return [];
+  if (count > 6) count = 6;
+
+  let sizeMatrix: number[][] | null = null;
+  let layoutMatrices: (number[][] | null)[] = [];
+
+  while (true) {
+    sizeMatrix = getValidPartialSizeMatrix(count);
+    if (!sizeMatrix) continue;
+
+    layoutMatrices = [];
+    let success = true;
+    for (let t = 0; t < count; t++) {
+      const layout = attemptGenerateLayoutForCounts(sizeMatrix[t]);
+      if (!layout) { success = false; break; }
+      layoutMatrices.push(layout);
+    }
+    if (success) break;
+  }
+
+  const finalGrids: TicketGrid[] = Array(count).fill(null).map(() => [
+    Array(9).fill(null), Array(9).fill(null), Array(9).fill(null)
+  ]);
+
+  for (let c = 0; c < 9; c++) {
+    const range = COLUMN_RANGES[c];
+    let nums: number[] = [];
+    for (let i = range.min; i <= range.max; i++) nums.push(i);
+    nums = shuffle(nums);
+
+    for (let t = 0; t < count; t++) {
+      const gridLayout = layoutMatrices[t]!;
+      let cnt = 0;
+      for (let r = 0; r < 3; r++) if (gridLayout[r][c] === 1) cnt++;
+
+      const allocatedNums: number[] = [];
+      for (let i = 0; i < cnt; i++) allocatedNums.push(nums.pop()!);
+      allocatedNums.sort((a, b) => a - b);
+
+      let numIdx = 0;
+      for (let r = 0; r < 3; r++) {
+        if (gridLayout[r][c] === 1) {
+          finalGrids[t][r][c] = allocatedNums[numIdx++];
+        }
+      }
+    }
+  }
+
+  const tickets: Ticket[] = [];
+  const ts = Date.now();
+  for (let i = 0; i < count; i++) {
+    tickets.push({
+      id: startId + i,
+      playerName,
+      grid: finalGrids[i],
+      timestamp: ts,
+    });
+  }
+  return tickets;
+}
+
 export function generateFullSheetTickets(playerNamePrefix: string = "Player", startId: number = 1): Ticket[] {
   let sizeMatrix: number[][] | null = null;
   let layoutMatrices: (number[][] | null)[] = [];

@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { Ticket } from "@/lib/ticket-generator";
 import html2canvas from "html2canvas";
-import { Share2, Download, MessageCircle } from "lucide-react";
+import { Download, MessageCircle } from "lucide-react";
 
 
 interface TicketSheetProps {
@@ -47,33 +47,62 @@ export function TicketSheet({ tickets, gameTitle, issueDate, gameDate, groupName
     setIsExporting(true);
     try {
       const canvas = await html2canvas(sheetRef.current, { scale: 2, useCORS: true, backgroundColor: "#ff9a9e" });
-      canvas.toBlob(async (blob) => {
-        if (!blob) {
+      const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+      if (!blob) {
+        setIsExporting(false);
+        return;
+      }
+
+      const safeName = tickets[0].playerName.replace(/\s+/g, "-");
+      const fileName = `tambola_sheet_${safeName}.png`;
+      const file = new File([blob], fileName, { type: "image/png" });
+
+      // 1) Native Web Share API — works on mobile (iOS/Android) and lets user pick WhatsApp
+      if (typeof navigator !== "undefined" && typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            title: gameTitle || "Tambola Game",
+            text: "Here is your Tambola Sheet!",
+            files: [file],
+          });
+          setIsExporting(false);
+          return;
+        } catch (err) {
+          const error = err as Error;
+          // User cancelled the share dialog — don't fall back
+          if (error?.name === "AbortError") {
             setIsExporting(false);
             return;
-        }
-        const file = new File([blob], `tambola_sheet_${tickets[0].playerName}.png`, { type: "image/png" });
-        
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          try {
-            await navigator.share({
-              title: gameTitle || "Tambola Game",
-              text: "Here is your Tambola Sheet!",
-              files: [file]
-            });
-          } catch (err) {
-            console.error("Share failed", err);
           }
-        } else {
-          // Fallback if Web Share is not supported
-          alert("Direct sharing is not supported on your current browser (often happens on desktop/localhost). We will download the image for you instead.");
-          handleDownload();
+          console.error("Native share failed, falling back to download + WhatsApp link", err);
         }
-        setIsExporting(false);
-      }, "image/png");
+      }
+
+      // 2) Desktop / unsupported browsers fallback:
+      //    Download the image, then open WhatsApp (web or installed app) with a prefilled message.
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      // Revoke after a short delay so the download has time to start
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+      const message = `Here is your Tambola Sheet for ${tickets[0].playerName}! Please attach the just-downloaded image (${fileName}).`;
+      const waUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+
+      // window.open is more reliable than location.href and works in most browsers including in-app webviews
+      const opened = window.open(waUrl, "_blank", "noopener,noreferrer");
+      if (!opened) {
+        // Popup blocked — fall back to direct navigation
+        window.location.href = waUrl;
+      }
     } catch (e) {
       console.error(e);
-      alert("Error generating image.");
+      alert("Error generating image. Please try again.");
+    } finally {
       setIsExporting(false);
     }
   };
