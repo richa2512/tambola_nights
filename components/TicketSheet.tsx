@@ -56,30 +56,84 @@ export function TicketSheet({ tickets, gameTitle, issueDate, gameDate, groupName
       const safeName = tickets[0].playerName.replace(/\s+/g, "-");
       const fileName = `tambola_sheet_${safeName}.png`;
       const file = new File([blob], fileName, { type: "image/png" });
+      const shareText = `Your Tambola Sheet for ${tickets[0].playerName}${gameTitle ? ` — ${gameTitle}` : ""}`;
 
-      // 1) Native Web Share API — works on mobile (iOS/Android) and lets user pick WhatsApp
-      if (typeof navigator !== "undefined" && typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
+      // ── Path 1: Native Web Share API with files
+      // Works in Capacitor mobile apps, Chrome on Android, Safari on iOS, modern Edge/Chrome on Win/macOS.
+      // The OS share sheet appears, the user picks WhatsApp, and the IMAGE FILE is actually attached.
+      const canShareFiles =
+        typeof navigator !== "undefined" &&
+        typeof navigator.canShare === "function" &&
+        navigator.canShare({ files: [file] });
+
+      if (canShareFiles) {
         try {
           await navigator.share({
             title: gameTitle || "Tambola Game",
-            text: "Here is your Tambola Sheet!",
+            text: shareText,
             files: [file],
           });
+          // Successfully handed off to the OS share sheet
           setIsExporting(false);
           return;
         } catch (err) {
           const error = err as Error;
-          // User cancelled the share dialog — don't fall back
           if (error?.name === "AbortError") {
+            // User explicitly cancelled — don't fall back, just stop.
             setIsExporting(false);
             return;
           }
-          console.error("Native share failed, falling back to download + WhatsApp link", err);
+          console.error("Native file share failed, trying clipboard fallback", err);
         }
       }
 
-      // 2) Desktop / unsupported browsers fallback:
-      //    Download the image, then open WhatsApp (web or installed app) with a prefilled message.
+      // ── Path 2: Clipboard image + open WhatsApp Web
+      // On desktop browsers, you cannot programmatically attach a file to WhatsApp Web,
+      // but you CAN write the PNG to the clipboard so the user just presses Ctrl+V / ⌘+V
+      // inside the WhatsApp chat. This is the closest we can get to a one-click share.
+      const supportsClipboardImage =
+        typeof navigator !== "undefined" &&
+        typeof navigator.clipboard !== "undefined" &&
+        typeof navigator.clipboard.write === "function" &&
+        typeof window !== "undefined" &&
+        typeof window.ClipboardItem !== "undefined";
+
+      if (supportsClipboardImage) {
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({ "image/png": blob }),
+          ]);
+
+          // Also save a copy locally so the user has a backup if they need to re-attach
+          const dlUrl = URL.createObjectURL(blob);
+          const dlLink = document.createElement("a");
+          dlLink.href = dlUrl;
+          dlLink.download = fileName;
+          document.body.appendChild(dlLink);
+          dlLink.click();
+          document.body.removeChild(dlLink);
+          setTimeout(() => URL.revokeObjectURL(dlUrl), 1000);
+
+          // Open WhatsApp Web (or the desktop app via wa.me / web.whatsapp.com)
+          const waUrl = `https://web.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+          const opened = window.open(waUrl, "_blank", "noopener,noreferrer");
+          if (!opened) window.location.href = waUrl;
+
+          alert(
+            "Your ticket image has been COPIED to your clipboard.\n\n" +
+            "Step 1 — In WhatsApp Web, open the chat you want to send to.\n" +
+            "Step 2 — Click in the message box and press Ctrl + V (Cmd + V on Mac) to paste the image.\n" +
+            "Step 3 — Press Send.\n\n" +
+            "(A copy of the image was also downloaded as a backup.)"
+          );
+          setIsExporting(false);
+          return;
+        } catch (err) {
+          console.error("Clipboard image write failed, falling back to download", err);
+        }
+      }
+
+      // ── Path 3: Last-resort fallback — download the image and open WhatsApp Web with text
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -87,18 +141,18 @@ export function TicketSheet({ tickets, gameTitle, issueDate, gameDate, groupName
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      // Revoke after a short delay so the download has time to start
       setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-      const message = `Here is your Tambola Sheet for ${tickets[0].playerName}! Please attach the just-downloaded image (${fileName}).`;
+      const message = `${shareText}\n(Please attach the just-downloaded image: ${fileName})`;
       const waUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-
-      // window.open is more reliable than location.href and works in most browsers including in-app webviews
       const opened = window.open(waUrl, "_blank", "noopener,noreferrer");
-      if (!opened) {
-        // Popup blocked — fall back to direct navigation
-        window.location.href = waUrl;
-      }
+      if (!opened) window.location.href = waUrl;
+
+      alert(
+        "Your browser does not support attaching images directly to WhatsApp.\n\n" +
+        `The ticket image has been downloaded as "${fileName}". ` +
+        "After WhatsApp Web opens, click the attachment (paperclip) icon and select that file."
+      );
     } catch (e) {
       console.error(e);
       alert("Error generating image. Please try again.");

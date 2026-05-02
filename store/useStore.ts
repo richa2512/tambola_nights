@@ -37,7 +37,6 @@ interface GameState {
   resetGame: () => void;
   addTickets: (tickets: Ticket[]) => void;
   clearTickets: () => void;
-  deleteTicket: (ticketId: string | number) => void;
   deleteTicketsByPlayer: (playerName: string) => void;
   startSession: (config: Omit<SessionConfig, 'isActive'>) => void;
   endSession: () => void;
@@ -130,11 +129,6 @@ export const useGameStore = create<GameState>()(
 
       clearTickets: () => {
         set({ tickets: [] });
-        pushToFirebase(get());
-      },
-
-      deleteTicket: (ticketId) => {
-        set((state) => ({ tickets: state.tickets.filter(t => t.id !== ticketId) }));
         pushToFirebase(get());
       },
 

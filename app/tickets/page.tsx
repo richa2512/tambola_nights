@@ -8,7 +8,7 @@ import { useGameStore } from "@/store/useStore";
 import Papa from "papaparse";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import { Download, Upload, Plus, Trash2, Home, Settings, X } from "lucide-react";
+import { Download, Upload, Plus, Trash2, Home, Settings } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -20,7 +20,7 @@ type TicketUploadRow = {
 };
 
 export default function TicketsPage() {
-  const { tickets, addTickets, clearTickets, deleteTicket, deleteTicketsByPlayer, sessionConfig, startSession, endSession } = useGameStore();
+  const { tickets, addTickets, clearTickets, deleteTicketsByPlayer, sessionConfig, startSession, endSession } = useGameStore();
   const [manualCount, setManualCount] = useState(1);
   const [playerName, setPlayerName] = useState("");
   const [isExporting, setIsExporting] = useState(false);
@@ -332,23 +332,6 @@ export default function TicketsPage() {
 
                     {expandedPlayer === playerId && (
                       <div className="p-3 sm:p-5 md:p-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/20 flex flex-col items-center overflow-x-auto w-full">
-                        {playerTickets.length > 1 && (
-                          <div className="w-full max-w-3xl mb-3 flex flex-wrap gap-2 justify-end">
-                            {playerTickets.map((t) => (
-                              <button
-                                key={`del-${t.id}`}
-                                onClick={() => {
-                                  if (confirm(`Delete ticket #${t.id}?`)) {
-                                    deleteTicket(t.id);
-                                  }
-                                }}
-                                className="min-h-9 flex items-center gap-1 px-3 py-1.5 text-xs font-medium border border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900 dark:hover:bg-red-900/20 rounded-full transition-colors"
-                              >
-                                <X className="w-3 h-3" /> Ticket #{t.id}
-                              </button>
-                            ))}
-                          </div>
-                        )}
                         <TicketSheet
                           tickets={playerTickets}
                           gameTitle={sessionConfig.gameTitle}
