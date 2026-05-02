@@ -41,19 +41,19 @@ export default function PlayPage() {
   };
 
   return (
-    <div className="min-h-screen p-4 md:p-8 max-w-4xl mx-auto flex flex-col items-center">
-      <div className="w-full flex items-center justify-between mb-8">
+    <div className="min-h-screen px-4 py-5 sm:p-6 md:p-8 max-w-4xl mx-auto flex flex-col items-center">
+      <div className="w-full flex items-center justify-between gap-4 mb-8">
         <Link href="/" className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
           <Home className="w-5 h-5 text-slate-600 dark:text-slate-300" />
         </Link>
         <div className="text-right">
-          <h1 className="text-2xl font-bold">Player View</h1>
-          {gameId && <p className="text-sm text-primary-600 font-mono">Live Session: {gameId}</p>}
+          <h1 className="text-xl sm:text-2xl font-bold">Player View</h1>
+          {gameId && <p className="text-xs sm:text-sm text-primary-600 font-mono break-all">Live Session: {gameId}</p>}
         </div>
       </div>
 
       {!activeTicketId ? (
-        <form onSubmit={handleSearch} className="w-full max-w-md glass p-8 rounded-3xl shadow-lg border border-border text-center space-y-6 mt-10">
+        <form onSubmit={handleSearch} className="w-full max-w-md glass p-5 sm:p-8 rounded-2xl sm:rounded-3xl shadow-lg border border-border text-center space-y-6 mt-6 sm:mt-10">
           <div className="inline-flex items-center justify-center p-4 bg-primary-100 text-primary-600 rounded-full mb-2">
              <Search className="w-8 h-8" />
           </div>
@@ -71,7 +71,7 @@ export default function PlayPage() {
             />
             <button 
               type="submit"
-              className="w-full py-4 text-lg font-bold text-white bg-primary-600 hover:bg-primary-700 rounded-xl shadow-lg shadow-primary-600/30 transition-all hover:scale-[1.02]"
+              className="w-full min-h-14 py-4 text-base sm:text-lg font-bold text-white bg-primary-600 hover:bg-primary-700 rounded-xl shadow-lg shadow-primary-600/30 transition-all hover:scale-[1.02]"
             >
               Load Ticket
             </button>
@@ -79,14 +79,14 @@ export default function PlayPage() {
         </form>
       ) : activeTicket ? (
         <div className="w-full space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-500">
-          <div className="flex justify-between items-center bg-slate-100 dark:bg-slate-800 p-4 rounded-xl border border-border">
-            <div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center bg-slate-100 dark:bg-slate-800 p-4 rounded-xl border border-border">
+            <div className="min-w-0">
               <p className="text-sm text-slate-500 uppercase tracking-widest font-semibold">Playing as</p>
-              <h2 className="text-xl font-bold">{activeTicket.playerName}</h2>
+              <h2 className="text-xl font-bold break-words">{activeTicket.playerName}</h2>
             </div>
             <button 
               onClick={() => setActiveTicketId(null)}
-              className="px-4 py-2 text-sm font-medium border border-border rounded-lg bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              className="min-h-11 px-4 py-2 text-sm font-medium border border-border rounded-lg bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
             >
               Switch Ticket
             </button>
@@ -99,7 +99,7 @@ export default function PlayPage() {
               : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:border-red-800 dark:text-red-400'
             }`}>
               {validationResult.isValid ? <CheckCircle className="w-6 h-6" /> : <AlertCircle className="w-6 h-6" />}
-              <span className="font-semibold text-lg">{validationResult.message}</span>
+              <span className="font-semibold text-base sm:text-lg">{validationResult.message}</span>
             </div>
           )}
 
@@ -113,7 +113,7 @@ export default function PlayPage() {
 
           <div className="glass p-6 rounded-2xl shadow-sm border border-border">
              <h3 className="text-lg font-bold mb-4">Claim Prize</h3>
-             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                {[
                  { label: "Early 5", type: "EARLY_5" },
                  { label: "Top Line", type: "TOP_LINE" },
@@ -125,7 +125,7 @@ export default function PlayPage() {
                  <button
                    key={claim.type}
                    onClick={() => checkClaim(claim.type as ClaimType)}
-                   className="p-3 font-semibold text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-primary-50 hover:border-primary-400 hover:text-primary-600 dark:hover:bg-primary-950/50 dark:hover:border-primary-800 dark:hover:text-primary-400 transition-colors shadow-sm"
+                   className="min-h-12 p-3 font-semibold text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-primary-50 hover:border-primary-400 hover:text-primary-600 dark:hover:bg-primary-950/50 dark:hover:border-primary-800 dark:hover:text-primary-400 transition-colors shadow-sm"
                  >
                    {claim.label}
                  </button>

@@ -1,12 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import { Outfit } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
-
-const outfit = Outfit({
-  subsets: ["latin"],
-  variable: "--font-outfit",
-});
+import { RealtimeSessionSync } from "@/components/RealtimeSessionSync";
 
 export const viewport: Viewport = {
   themeColor: "#db2777",
@@ -14,16 +9,23 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  viewportFit: "cover",
 };
 
 export const metadata: Metadata = {
   title: "Tambola Housie",
   description: "The ultimate platform to host, manage, and play Tambola.",
   manifest: "/manifest.json",
+  applicationName: "Tambola Housie",
+  category: "entertainment",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "Tambola",
+  },
+  icons: {
+    icon: "/icon.svg",
+    apple: "/apple-touch-icon.svg",
   },
   formatDetection: {
     telephone: false,
@@ -37,13 +39,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${outfit.variable} font-sans antialiased`}>
+      <body className="font-sans antialiased">
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >
+          <RealtimeSessionSync />
           {children}
         </ThemeProvider>
       </body>

@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import { Ticket } from "@/lib/ticket-generator";
 import { db } from "@/lib/firebase";
 import { doc, setDoc, onSnapshot, getDoc } from "firebase/firestore";
+import type { DocumentData, DocumentSnapshot } from "firebase/firestore";
 
 export interface SessionConfig {
   isActive: boolean;
@@ -27,8 +28,10 @@ interface GameState {
   sessionConfig: SessionConfig | null;
   role: 'admin' | 'sub-admin' | null;
   pastSessions: PastSession[];
+  hasHydrated: boolean;
   
   // Actions
+  setHasHydrated: (hasHydrated: boolean) => void;
   initializeGame: () => void;
   callNumber: (num: number) => void;
   resetGame: () => void;
@@ -40,8 +43,10 @@ interface GameState {
   
   // Realtime Sync
   joinSession: (joinId: string) => Promise<boolean>;
+  ensureRealtimeSubscription: (joinId?: string) => boolean;
   setRole: (role: 'admin' | 'sub-admin' | null) => void;
   unsubscribeSnapshot: (() => void) | null;
+  subscribedGameId: string | null;
 }
 
 const pushToFirebase = (state: GameState) => {
@@ -54,6 +59,29 @@ const pushToFirebase = (state: GameState) => {
   }).catch(e => console.error("Firebase Sync Error", e));
 };
 
+const readSessionSnapshot = (docSnap: DocumentSnapshot<DocumentData>) => {
+  if (!docSnap.exists()) return null;
+
+  const data = docSnap.data();
+  let parsedTickets: Ticket[] = [];
+
+  if (data.tickets) {
+    try {
+      parsedTickets = typeof data.tickets === 'string' ? JSON.parse(data.tickets) : data.tickets;
+    } catch (e) {
+      console.error("Ticket sync parse error", e);
+    }
+  }
+
+  return {
+    calledNumbers: data.calledNumbers || [],
+    tickets: parsedTickets,
+    sessionConfig: data.sessionConfig || null,
+  };
+};
+
+const canSyncRole = (role: GameState["role"]) => role === 'admin' || role === 'sub-admin';
+
 export const useGameStore = create<GameState>()(
   persist(
     (set, get) => ({
@@ -63,9 +91,16 @@ export const useGameStore = create<GameState>()(
       sessionConfig: null,
       role: null,
       pastSessions: [],
+      hasHydrated: false,
       unsubscribeSnapshot: null,
+      subscribedGameId: null,
+
+      setHasHydrated: (hasHydrated) => set({ hasHydrated }),
 
       initializeGame: () => {
+        const state = get();
+        if (state.gameId || state.sessionConfig?.isActive) return;
+
         const newGameId = `GAME-${Math.floor(Math.random() * 10000)}`;
         set({ gameId: newGameId, calledNumbers: [] });
         pushToFirebase(get());
@@ -122,7 +157,7 @@ export const useGameStore = create<GameState>()(
           set(s => ({ pastSessions: [archivedSession, ...s.pastSessions] }));
         }
 
-        set({ sessionConfig: null, tickets: [], calledNumbers: [], gameId: null, role: null, unsubscribeSnapshot: null });
+        set({ sessionConfig: null, tickets: [], calledNumbers: [], gameId: null, role: null, unsubscribeSnapshot: null, subscribedGameId: null });
       },
 
       restoreSession: (session: PastSession) => {
@@ -138,6 +173,48 @@ export const useGameStore = create<GameState>()(
 
       setRole: (role) => set({ role }),
 
+      ensureRealtimeSubscription: (joinId) => {
+        const state = get();
+        const sessionId = joinId || state.gameId;
+
+        if (!db || !sessionId || !canSyncRole(state.role)) {
+          return false;
+        }
+
+        if (state.unsubscribeSnapshot && state.subscribedGameId === sessionId) {
+          return true;
+        }
+
+        if (state.unsubscribeSnapshot) {
+          state.unsubscribeSnapshot();
+        }
+
+        const docRef = doc(db, "sessions", sessionId);
+        const unsub = onSnapshot(docRef, (docSnap) => {
+          const session = readSessionSnapshot(docSnap);
+
+          if (!session) {
+            set({
+              sessionConfig: null,
+              tickets: [],
+              calledNumbers: [],
+              gameId: sessionId,
+            });
+            return;
+          }
+
+          set({
+            gameId: sessionId,
+            ...session,
+          });
+        }, (e) => {
+          console.error("Realtime session sync error", e);
+        });
+
+        set({ unsubscribeSnapshot: unsub, subscribedGameId: sessionId, gameId: sessionId });
+        return true;
+      },
+
       joinSession: async (joinId: string) => {
         if (!db) {
           alert("Firebase is not connected! Unable to join real-time sessions.");
@@ -152,29 +229,14 @@ export const useGameStore = create<GameState>()(
             return false; // Game not found
           }
 
-          // Sub-Admin Snapshot Setup
-          const unsub = onSnapshot(docRef, (docSnap) => {
-            if (docSnap.exists()) {
-              const data = docSnap.data();
-              let parsedTickets = [];
-              if (data.tickets) {
-                 parsedTickets = typeof data.tickets === 'string' ? JSON.parse(data.tickets) : data.tickets;
-              }
-              set({
-                gameId: joinId,
-                calledNumbers: data.calledNumbers || [],
-                tickets: parsedTickets,
-                sessionConfig: data.sessionConfig || null,
-                role: 'sub-admin'
-              });
-            }
-          });
+          const session = readSessionSnapshot(snapshot);
+          if (session) {
+            set({ gameId: joinId, ...session, role: 'sub-admin' });
+          } else {
+            set({ gameId: joinId, role: 'sub-admin' });
+          }
 
-          const prevUnsub = get().unsubscribeSnapshot;
-          if (prevUnsub) prevUnsub();
-
-          set({ unsubscribeSnapshot: unsub, role: 'sub-admin', gameId: joinId });
-          return true;
+          return get().ensureRealtimeSubscription(joinId);
         } catch (e) {
           console.error("Join session error", e);
           return false;
@@ -190,7 +252,10 @@ export const useGameStore = create<GameState>()(
         sessionConfig: state.sessionConfig,
         role: state.role,
         pastSessions: state.pastSessions
-      }) 
+      }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      }
     }
   )
 );

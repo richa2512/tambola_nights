@@ -2,7 +2,6 @@
 
 import { useRef, useState } from "react";
 import { Ticket } from "@/lib/ticket-generator";
-import { cn } from "@/lib/utils";
 import html2canvas from "html2canvas";
 import { Share2, Download } from "lucide-react";
 
@@ -98,20 +97,20 @@ export function TicketSheet({ tickets, gameTitle, issueDate, gameDate, groupName
   const containerWidth = Math.max(800, minWidth);
 
   return (
-    <div className="w-full flex justify-center py-4">
-      <div className="flex flex-col gap-4 items-center">
+    <div className="w-full overflow-x-auto py-4">
+      <div className="flex min-w-max flex-col gap-4 items-center px-1 sm:px-2">
         {/* The Action Buttons (hidden during printing/exporting inherently by html2canvas grabbing only the ref) */}
         {!isExporting && (
-          <div className="flex gap-2 mb-2 no-print">
+          <div className="flex flex-wrap justify-center gap-2 mb-2 no-print">
             <button 
               onClick={handleDownload} 
-              className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 shadow-sm font-medium"
+              className="min-h-11 flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 shadow-sm font-medium"
             >
               <Download className="w-4 h-4" /> Download Sheet
             </button>
             <button 
               onClick={handleShare} 
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow-sm font-medium"
+              className="min-h-11 flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow-sm font-medium"
             >
               <Share2 className="w-4 h-4" /> Share on WhatsApp
             </button>

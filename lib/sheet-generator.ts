@@ -1,4 +1,4 @@
-import { TicketGrid, Ticket, generateTicketId } from "./ticket-generator";
+import { TicketGrid, Ticket } from "./ticket-generator";
 
 const COLUMN_CAPACITIES = [9, 10, 10, 10, 10, 10, 10, 10, 11];
 const COLUMN_RANGES = [
@@ -27,7 +27,7 @@ function getValidSizeMatrix(): number[][] | null {
   // Try random matrix generation until we hit a valid one
   for (let attempt = 0; attempt < 5000; attempt++) {
     const matrix = Array(6).fill(null).map(() => Array(9).fill(1));
-    let colRemaining = COLUMN_CAPACITIES.map(c => c - 6); // minus 1 per ticket
+    const colRemaining = COLUMN_CAPACITIES.map(c => c - 6); // minus 1 per ticket
     
     // We need to add exactly 36 slots across the 6 tickets (since 9x6=54 are pre-filled, 90-54=36)
     // 6 tickets * 6 extra slots = 36

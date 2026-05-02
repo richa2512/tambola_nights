@@ -6,9 +6,18 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "mobile:build": "next build && cap sync",
+    "mobile:ios": "next build && cap sync ios && cap open ios",
+    "mobile:android": "next build && cap sync android && cap open android"
   },
   "dependencies": {
+    "@capacitor/android": "^8.3.1",
+    "@capacitor/cli": "^8.3.1",
+    "@capacitor/core": "^8.3.1",
+    "@capacitor/ios": "^8.3.1",
+    "@capacitor/splash-screen": "^8.0.1",
+    "@capacitor/status-bar": "^8.0.2",
     "clsx": "^2.1.1",
     "firebase": "^12.12.1",
     "framer-motion": "^12.38.0",
