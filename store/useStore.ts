@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { Ticket } from "@/lib/ticket-generator";
-import { db } from "@/lib/firebase";
+import { getFirebaseDb, getFirebaseInitError } from "@/lib/firebase";
 import { doc, setDoc, onSnapshot, getDoc } from "firebase/firestore";
 import type { DocumentData, DocumentSnapshot } from "firebase/firestore";
 
@@ -51,6 +51,7 @@ interface GameState {
 }
 
 const pushToFirebase = (state: GameState) => {
+  const db = getFirebaseDb();
   if (!state.role || !state.gameId || !db) return; // Allow both Admins & Co-Admins to actively drive the board Sync
   setDoc(doc(db, "sessions", state.gameId), {
     calledNumbers: state.calledNumbers,
@@ -182,6 +183,7 @@ export const useGameStore = create<GameState>()(
       ensureRealtimeSubscription: (joinId) => {
         const state = get();
         const sessionId = joinId || state.gameId;
+        const db = getFirebaseDb();
 
         if (!db || !sessionId || !canSyncRole(state.role)) {
           return false;
@@ -222,15 +224,17 @@ export const useGameStore = create<GameState>()(
       },
 
       joinSession: async (joinId: string) => {
+        const db = getFirebaseDb();
         if (!db) {
-          alert("Firebase is not connected! Unable to join real-time sessions.");
+          const reason = getFirebaseInitError() || "Firebase is not initialised on this device.";
+          alert(`Cannot join real-time session.\n\n${reason}`);
           return false;
         }
-        
+
         try {
           const docRef = doc(db, "sessions", joinId);
           const snapshot = await getDoc(docRef);
-          
+
           if (!snapshot.exists()) {
             return false; // Game not found
           }

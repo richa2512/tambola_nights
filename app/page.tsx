@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Ticket, Mic2, Users, FileText, Download, Settings, PlayCircle, RotateCcw } from "lucide-react";
 import { useGameStore } from "@/store/useStore";
+import { isFirebaseReady, getFirebaseInitError } from "@/lib/firebase";
 import { useState } from "react";
 
 export default function Home() {
@@ -23,9 +24,16 @@ export default function Home() {
     e.preventDefault();
     if (!joinId.trim()) return;
     setJoinError("");
+
+    if (!isFirebaseReady()) {
+      const reason = getFirebaseInitError() || "Firebase is not configured on this build.";
+      setJoinError(reason);
+      return;
+    }
+
     const success = await useGameStore.getState().joinSession(joinId.trim());
     if (!success) {
-      setJoinError("Game not found or Firebase disconnected.");
+      setJoinError(`Game "${joinId.trim()}" was not found. Double-check the join code with the host.`);
     }
   };
 
