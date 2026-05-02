@@ -2,13 +2,29 @@ import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
 import { getFirestore, Firestore } from "firebase/firestore";
 import { getAuth, signInAnonymously, onAuthStateChanged, Auth, User } from "firebase/auth";
 
+// NOTE: Firebase web SDK config values are PUBLIC by design — they identify
+// the project, they do not authenticate the user. Real security comes from
+// Firebase Auth + Firestore security rules. Hard-coding the values here as a
+// fallback means the app works even when .env.local was not picked up by the
+// build (common cause of the "Firebase config is missing" banner on mobile
+// bundles built without env injection). You can still override any field via
+// the matching NEXT_PUBLIC_FIREBASE_* environment variable.
+const FALLBACK_CONFIG = {
+  apiKey: "AIzaSyCVAfnWLeN8emTOEkAbJ6SsPFwVvVDkHH8",
+  authDomain: "tambola-e1164.firebaseapp.com",
+  projectId: "tambola-e1164",
+  storageBucket: "tambola-e1164.firebasestorage.app",
+  messagingSenderId: "24007368676",
+  appId: "1:24007368676:web:c490f598b068664b4c31f1",
+};
+
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || FALLBACK_CONFIG.apiKey,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || FALLBACK_CONFIG.authDomain,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || FALLBACK_CONFIG.projectId,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || FALLBACK_CONFIG.storageBucket,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || FALLBACK_CONFIG.messagingSenderId,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || FALLBACK_CONFIG.appId,
 };
 
 let _app: FirebaseApp | null = null;
