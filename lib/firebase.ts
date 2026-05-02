@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
 import { getFirestore, Firestore } from "firebase/firestore";
-import { getAuth, signInAnonymously, Auth } from "firebase/auth";
+import { getAuth, signInAnonymously, onAuthStateChanged, Auth, User } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -78,15 +78,73 @@ export function isFirebaseReady(): boolean {
   return _db !== null;
 }
 
-// Helper to anonymously login
-export const autoLogin = async () => {
-  const a = getFirebaseAuth();
-  if (!a) return null;
-  try {
-    const cred = await signInAnonymously(a);
-    return cred.user;
-  } catch (e) {
-    console.warn("Firebase Auth blocked/failed", e);
-    return null;
-  }
-};
+// ── Anonymous auth bootstrap ─────────────────────────────────────────────
+// Firestore default security rules require an authenticated user.
+// We sign the user in anonymously once on the first call and cache the
+// resulting promise so every subsequent call resolves immediately.
+let _authReadyPromise: Promise<User | null> | null = null;
+let _authError: string | null = null;
+
+export function ensureAuth(): Promise<User | null> {
+  if (_authReadyPromise) return _authReadyPromise;
+
+  _authReadyPromise = (async () => {
+    const a = getFirebaseAuth();
+    if (!a) {
+      _authError = getFirebaseInitError() || "Firebase Auth is unavailable on this device.";
+      return null;
+    }
+
+    // If a user is already signed in (e.g. session restored), use them.
+    if (a.currentUser) return a.currentUser;
+
+    // Otherwise wait for either a restored auth state or a fresh anon sign-in.
+    try {
+      const fromState = await new Promise<User | null>((resolve) => {
+        const unsub = onAuthStateChanged(a, (u) => {
+          unsub();
+          resolve(u ?? null);
+        });
+        // Safety timeout — don't wait forever on a cold start
+        setTimeout(() => resolve(null), 1500);
+      });
+      if (fromState) return fromState;
+
+      const cred = await signInAnonymously(a);
+      return cred.user;
+    } catch (e) {
+      const err = e as { code?: string; message?: string };
+      const code = err?.code || "";
+      const msg = err?.message || String(e);
+
+      let hint = "";
+      if (code === "auth/configuration-not-found" || /configuration-not-found/i.test(msg)) {
+        hint =
+          "\n\nFix: open the Firebase Console for project " +
+          (firebaseConfig.projectId || "your project") +
+          " → Authentication → click 'Get started' if you have never used Auth before → Sign-in method tab → choose 'Anonymous' → toggle Enable → Save. " +
+          "Then close and reopen the app.";
+      } else if (code === "auth/admin-restricted-operation") {
+        hint =
+          "\n\nFix: Anonymous sign-in is currently disabled. In the Firebase Console go to Authentication → Sign-in method → Anonymous → toggle Enable.";
+      } else if (code === "auth/network-request-failed") {
+        hint = "\n\nThe device could not reach Firebase. Check your internet connection and try again.";
+      }
+
+      _authError = `Firebase anonymous sign-in failed (${code || "unknown"}): ${msg}.${hint}`;
+      console.error("[firebase]", _authError, e);
+      // Clear the cache so a future retry can attempt again
+      _authReadyPromise = null;
+      return null;
+    }
+  })();
+
+  return _authReadyPromise;
+}
+
+export function getAuthError(): string | null {
+  return _authError;
+}
+
+// Back-compat alias used by older code paths
+export const autoLogin = ensureAuth;

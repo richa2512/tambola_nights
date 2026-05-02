@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { Ticket } from "@/lib/ticket-generator";
-import { getFirebaseDb, getFirebaseInitError } from "@/lib/firebase";
+import { getFirebaseDb, getFirebaseInitError, ensureAuth, getAuthError } from "@/lib/firebase";
 import { doc, setDoc, onSnapshot, getDoc } from "firebase/firestore";
 import type { DocumentData, DocumentSnapshot } from "firebase/firestore";
 
@@ -29,7 +29,9 @@ interface GameState {
   role: 'admin' | 'sub-admin' | null;
   pastSessions: PastSession[];
   hasHydrated: boolean;
-  
+  syncStatus: 'idle' | 'syncing' | 'synced' | 'error';
+  syncError: string | null;
+
   // Actions
   setHasHydrated: (hasHydrated: boolean) => void;
   initializeGame: () => void;
@@ -41,7 +43,7 @@ interface GameState {
   startSession: (config: Omit<SessionConfig, 'isActive'>) => void;
   endSession: () => void;
   restoreSession: (session: PastSession) => void;
-  
+
   // Realtime Sync
   joinSession: (joinId: string) => Promise<boolean>;
   ensureRealtimeSubscription: (joinId?: string) => boolean;
@@ -50,15 +52,45 @@ interface GameState {
   subscribedGameId: string | null;
 }
 
-const pushToFirebase = (state: GameState) => {
+// Set status setter is wired up after the store is created — kept as a forward
+// reference so the helper below can call it without a circular import.
+let _setSyncStatus: ((s: GameState["syncStatus"], err?: string | null) => void) | null = null;
+
+const pushToFirebase = async (state: GameState) => {
   const db = getFirebaseDb();
-  if (!state.role || !state.gameId || !db) return; // Allow both Admins & Co-Admins to actively drive the board Sync
-  setDoc(doc(db, "sessions", state.gameId), {
-    calledNumbers: state.calledNumbers,
-    tickets: JSON.stringify(state.tickets), // Bypass Firestore 'Nested Arrays' strict limitation
-    sessionConfig: state.sessionConfig,
-    updatedAt: Date.now()
-  }).catch(e => console.error("Firebase Sync Error", e));
+  if (!state.role || !state.gameId) return;
+  if (!db) {
+    const reason = getFirebaseInitError() || "Firestore client is not initialised.";
+    console.error("[firebase] Cannot push session — ", reason);
+    _setSyncStatus?.("error", reason);
+    return;
+  }
+
+  try {
+    _setSyncStatus?.("syncing", null);
+
+    // Make sure we're signed in (anonymous) before writing.
+    const user = await ensureAuth();
+    if (!user) {
+      const reason = getAuthError() || "Anonymous Firebase sign-in failed.";
+      console.error("[firebase] Cannot push session — ", reason);
+      _setSyncStatus?.("error", reason);
+      return;
+    }
+
+    await setDoc(doc(db, "sessions", state.gameId), {
+      calledNumbers: state.calledNumbers,
+      tickets: JSON.stringify(state.tickets), // Bypass Firestore 'Nested Arrays' strict limitation
+      sessionConfig: state.sessionConfig,
+      updatedAt: Date.now(),
+      ownerUid: user.uid,
+    });
+    _setSyncStatus?.("synced", null);
+  } catch (e) {
+    const msg = (e as Error)?.message || String(e);
+    console.error("Firebase Sync Error", e);
+    _setSyncStatus?.("error", `Firestore write failed: ${msg}. Check that your Firestore security rules allow authenticated writes to /sessions/{id}.`);
+  }
 };
 
 const readSessionSnapshot = (docSnap: DocumentSnapshot<DocumentData>) => {
@@ -96,6 +128,8 @@ export const useGameStore = create<GameState>()(
       hasHydrated: false,
       unsubscribeSnapshot: null,
       subscribedGameId: null,
+      syncStatus: 'idle',
+      syncError: null,
 
       setHasHydrated: (hasHydrated) => set({ hasHydrated }),
 
@@ -227,11 +261,21 @@ export const useGameStore = create<GameState>()(
         const db = getFirebaseDb();
         if (!db) {
           const reason = getFirebaseInitError() || "Firebase is not initialised on this device.";
+          set({ syncStatus: 'error', syncError: reason });
           alert(`Cannot join real-time session.\n\n${reason}`);
           return false;
         }
 
         try {
+          // Make sure we're signed in before reading — Firestore default rules require auth
+          const user = await ensureAuth();
+          if (!user) {
+            const reason = getAuthError() || "Anonymous sign-in failed.";
+            set({ syncStatus: 'error', syncError: reason });
+            alert(`Cannot join real-time session.\n\n${reason}`);
+            return false;
+          }
+
           const docRef = doc(db, "sessions", joinId);
           const snapshot = await getDoc(docRef);
 
@@ -246,9 +290,12 @@ export const useGameStore = create<GameState>()(
             set({ gameId: joinId, role: 'sub-admin' });
           }
 
+          set({ syncStatus: 'synced', syncError: null });
           return get().ensureRealtimeSubscription(joinId);
         } catch (e) {
+          const msg = (e as Error)?.message || String(e);
           console.error("Join session error", e);
+          set({ syncStatus: 'error', syncError: `Join failed: ${msg}` });
           return false;
         }
       }
@@ -269,3 +316,8 @@ export const useGameStore = create<GameState>()(
     }
   )
 );
+
+// Wire the helper used by pushToFirebase to update sync status without a circular import.
+_setSyncStatus = (status, err = null) => {
+  useGameStore.setState({ syncStatus: status, syncError: err ?? null });
+};
