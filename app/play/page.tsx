@@ -111,26 +111,42 @@ export default function PlayPage() {
             />
           </div>
 
-          <div className="glass p-6 rounded-2xl shadow-sm border border-border">
-             <h3 className="text-lg font-bold mb-4">Claim Prize</h3>
-             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-               {[
-                 { label: "Early 5", type: "EARLY_5" },
-                 { label: "Top Line", type: "TOP_LINE" },
-                 { label: "Middle Line", type: "MIDDLE_LINE" },
-                 { label: "Bottom Line", type: "BOTTOM_LINE" },
-                 { label: "Corners", type: "CORNERS" },
-                 { label: "Full House", type: "FULL_HOUSE" },
-               ].map((claim) => (
-                 <button
-                   key={claim.type}
-                   onClick={() => checkClaim(claim.type as ClaimType)}
-                   className="min-h-12 p-3 font-semibold text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-primary-50 hover:border-primary-400 hover:text-primary-600 dark:hover:bg-primary-950/50 dark:hover:border-primary-800 dark:hover:text-primary-400 transition-colors shadow-sm"
-                 >
-                   {claim.label}
-                 </button>
-               ))}
-             </div>
+          <div className="glass p-6 rounded-2xl shadow-sm border border-border space-y-6">
+            <div className="mb-2">
+              <h3 className="text-lg font-bold mb-2 flex items-center gap-2">💎 Exciting Game Variations</h3>
+              <ul className="space-y-2 text-sm sm:text-base">
+                <li>🔸 <b>Top Line – ₹500</b><br /><span className="text-slate-500">(Mark all 5 numbers in the 1st row on a single ticket)</span></li>
+                <li>🔸 <b>Middle Line – ₹500</b><br /><span className="text-slate-500">(Mark all 5 numbers in the 2nd row on a single ticket)</span></li>
+                <li>🔸 <b>Bottom Line – ₹500</b><br /><span className="text-slate-500">(Mark all 5 numbers in the 3rd row on a single ticket)</span></li>
+                <li>🥐 <b>Breakfast – ₹500</b><br /><span className="text-slate-500">(All numbers from 1 to 30 marked on a single ticket)</span></li>
+                <li>🍛 <b>Lunch – ₹500</b><br /><span className="text-slate-500">(All numbers from 31 to 60 marked on a single ticket)</span></li>
+                <li>🍲 <b>Dinner – ₹500</b><br /><span className="text-slate-500">(All numbers from 61 to 90 marked on a single ticket)</span></li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold mb-4">Claim Prize</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {[
+                  { label: "Early 5", type: "EARLY_5" },
+                  { label: "Top Line", type: "TOP_LINE" },
+                  { label: "Middle Line", type: "MIDDLE_LINE" },
+                  { label: "Bottom Line", type: "BOTTOM_LINE" },
+                  { label: "Corners", type: "CORNERS" },
+                  { label: "Full House", type: "FULL_HOUSE" },
+                  { label: "🥐 Breakfast", type: "BREAKFAST" },
+                  { label: "🍛 Lunch", type: "LUNCH" },
+                  { label: "🍲 Dinner", type: "DINNER" },
+                ].map((claim) => (
+                  <button
+                    key={claim.type}
+                    onClick={() => checkClaim(claim.type as ClaimType)}
+                    className="min-h-12 p-3 font-semibold text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-primary-50 hover:border-primary-400 hover:text-primary-600 dark:hover:bg-primary-950/50 dark:hover:border-primary-800 dark:hover:text-primary-400 transition-colors shadow-sm"
+                  >
+                    {claim.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       ) : null}

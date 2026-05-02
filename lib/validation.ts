@@ -6,7 +6,10 @@ export type ClaimType =
   | "MIDDLE_LINE"
   | "BOTTOM_LINE"
   | "FULL_HOUSE"
-  | "CORNERS";
+  | "CORNERS"
+  | "BREAKFAST"
+  | "LUNCH"
+  | "DINNER";
 
 export interface ClaimResult {
   isValid: boolean;
@@ -99,6 +102,33 @@ export function validateClaim(
         : { isValid: false, message: `Invalid Corners. Found ${matched.length}/4.` };
     }
 
+    case "BREAKFAST": {
+      // All numbers from 1 to 30 marked on a single ticket
+      const allNums = getAllNumbers(grid);
+      const breakfastNums = allNums.filter((n) => n >= 1 && n <= 30);
+      const matched = breakfastNums.filter((n) => calledSet.has(n));
+      return matched.length === breakfastNums.length && breakfastNums.length > 0
+        ? { isValid: true, message: "Valid Breakfast!" }
+        : { isValid: false, message: `Invalid Breakfast. Found ${matched.length}/${breakfastNums.length} (1-30) marked.` };
+    }
+    case "LUNCH": {
+      // All numbers from 31 to 60 marked on a single ticket
+      const allNums = getAllNumbers(grid);
+      const lunchNums = allNums.filter((n) => n >= 31 && n <= 60);
+      const matched = lunchNums.filter((n) => calledSet.has(n));
+      return matched.length === lunchNums.length && lunchNums.length > 0
+        ? { isValid: true, message: "Valid Lunch!" }
+        : { isValid: false, message: `Invalid Lunch. Found ${matched.length}/${lunchNums.length} (31-60) marked.` };
+    }
+    case "DINNER": {
+      // All numbers from 61 to 90 marked on a single ticket
+      const allNums = getAllNumbers(grid);
+      const dinnerNums = allNums.filter((n) => n >= 61 && n <= 90);
+      const matched = dinnerNums.filter((n) => calledSet.has(n));
+      return matched.length === dinnerNums.length && dinnerNums.length > 0
+        ? { isValid: true, message: "Valid Dinner!" }
+        : { isValid: false, message: `Invalid Dinner. Found ${matched.length}/${dinnerNums.length} (61-90) marked.` };
+    }
     default:
       return { isValid: false, message: "Unknown Claim Type" };
   }
