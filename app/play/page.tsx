@@ -82,7 +82,7 @@ export default function PlayPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center bg-slate-100 dark:bg-slate-800 p-4 rounded-xl border border-border">
             <div className="min-w-0">
               <p className="text-sm text-slate-500 uppercase tracking-widest font-semibold">Playing as</p>
-              <h2 className="text-xl font-bold break-words">{activeTicket.playerName}</h2>
+              <h2 className="text-xl font-bold break-word">{activeTicket.playerName}</h2>
             </div>
             <button 
               onClick={() => setActiveTicketId(null)}
