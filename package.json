@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "deploy:rules": "firebase deploy --only firestore:rules --project tambola-e1164",
+    "see-projects": "firebase projects:list",
     "mobile:build": "next build && cap sync",
     "mobile:ios": "next build && cap sync ios && cap open ios",
     "mobile:android": "next build && cap sync android && cap open android"
@@ -42,6 +44,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
+    "firebase-tools": "^15.19.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
