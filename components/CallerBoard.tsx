@@ -13,32 +13,28 @@ export function CallerBoard({ calledNumbers }: CallerBoardProps) {
         <h3 className="font-bold text-lg text-slate-700 dark:text-slate-300">Master Board</h3>
         <p className="text-xs text-slate-500">Numbers called: {calledNumbers.length} / 90</p>
       </div>
-      <div className="grid grid-cols-10 gap-1 sm:gap-1.5 md:gap-2">
-        {Array.from({ length: 90 }, (_, i) => i + 1).map((num) => {
-          const isCalled = calledSet.has(num);
-          const isLastCalled = calledNumbers[0] === num;
-          
-          return (
-            <div
-              key={num}
-              className={cn(
-                "relative aspect-square min-w-0 flex items-center justify-center rounded sm:rounded-md md:rounded-lg text-[11px] min-[380px]:text-xs sm:text-sm md:text-base lg:text-lg font-bold transition-all duration-300",
-                isCalled 
-                  ? "bg-secondary-500 text-white shadow-sm" 
-                  : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600",
-                isLastCalled && "bg-primary-500 ring-4 ring-primary-500/30 scale-110 z-10 animate-pulse"
-              )}
-            >
-              {num}
-              {isLastCalled && (
-                <span className="absolute -top-2 -right-2 flex h-4 w-4">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-4 w-4 bg-primary-500"></span>
-                </span>
-              )}
-            </div>
-          );
-        })}
+      <div className="w-full overflow-x-auto pb-1">
+        <div className="mx-auto grid w-[600px] max-w-none grid-cols-10 gap-px border border-slate-500 bg-slate-500 p-px">
+          {Array.from({ length: 90 }, (_, i) => i + 1).map((num) => {
+            const isCalled = calledSet.has(num);
+            const isLastCalled = calledNumbers[0] === num;
+            
+            return (
+              <div
+                key={num}
+                className={cn(
+                  "aspect-square min-w-0 flex items-center justify-center rounded-none text-[38px] leading-none font-normal tabular-nums transition-colors",
+                  isCalled 
+                    ? "bg-[#064fe8] text-white" 
+                    : "bg-[#f5f4ee] text-slate-500",
+                  isLastCalled && "bg-[#d9001b] text-white"
+                )}
+              >
+                {num}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
